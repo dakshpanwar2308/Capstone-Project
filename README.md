@@ -69,6 +69,28 @@ Dockerfile (per service)     Container runtime definition
 - Node.js 18+ (ships with npm 9/10) for the front-end
 - Docker & Docker Compose (optional, for containerised deployment)
 
+## Quick Start
+
+1. **Build all services**
+   ```bash
+   mvn -f backend/pom.xml clean package -DskipTests
+   ```
+   This installs `common-lib` and resolves the dependency chain so single services can be launched without missing artefact errors.
+
+2. **Run the API Gateway (brings up dependencies automatically)**
+   ```bash
+   mvn -f backend/pom.xml -pl gateway-service -am spring-boot:run
+   ```
+   The `-am` flag ensures the gateway builds its required modules the first time. Make sure ports `8080` (gateway) and `8081-8085` are free; stop any stray Java process bound to these ports before retrying.
+
+3. **Front-end**
+   ```bash
+   cd frontend
+   npm install
+   npm run dev      # http://localhost:5173 (uses VITE_API_BASE_URL from .env)
+   ```
+   A production-ready bundle is already checked into `frontend/dist`. To preview it locally without rebuilding, run `npm run preview`.
+
 ## Building the Back-end
 
 ```bash
@@ -88,13 +110,12 @@ mvn -f backend/pom.xml -pl movies-service spring-boot:run
 
 ```bash
 cd frontend
-cp .env.example .env               # adjust VITE_API_BASE_URL if gateway runs elsewhere
 npm install
 npm run dev                        # dev server at http://localhost:5173
 npm run build                      # production build (dist/)
 ```
 
-The SPA assumes the Spring Cloud Gateway is reachable at `http://localhost:8080` in dev mode.
+The SPA assumes the Spring Cloud Gateway is reachable at `http://localhost:8080` in dev mode. Update `frontend/.env` if the gateway runs elsewhere.
 
 ## Docker Compose Workflow
 
