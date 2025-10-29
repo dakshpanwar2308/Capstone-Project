@@ -1,6 +1,7 @@
 package com.icinema.booking.domain;
 
 import com.icinema.common.model.BookingStatus;
+import com.icinema.common.model.CardType;
 import com.icinema.common.model.PaymentStatus;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -44,11 +45,27 @@ public class Booking {
     @Column(name = "total_amount", nullable = false)
     private double totalAmount;
 
+    @Column(name = "seat_total", nullable = false)
+    private double seatTotal;
+
+    @Column(name = "convenience_fee", nullable = false)
+    private double convenienceFee;
+
+    @Column(name = "gst_amount", nullable = false)
+    private double gstAmount;
+
+    @Column(name = "discount_amount", nullable = false)
+    private double discountAmount;
+
     @Column(name = "hold_token")
     private String holdToken;
 
     @Column(name = "payment_reference")
     private String paymentReference;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "card_type")
+    private CardType cardType;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -67,8 +84,9 @@ public class Booking {
     }
 
     public Booking(Long id, Long showId, String customerName, String customerEmail, BookingStatus status,
-                   PaymentStatus paymentStatus, double totalAmount, String holdToken, String paymentReference,
-                   LocalDateTime createdAt, List<String> seatNumbers) {
+                   PaymentStatus paymentStatus, double totalAmount, double seatTotal, double convenienceFee,
+                   double gstAmount, double discountAmount, String holdToken, String paymentReference,
+                   CardType cardType, LocalDateTime createdAt, List<String> seatNumbers) {
         this.id = id;
         this.showId = showId;
         this.customerName = customerName;
@@ -76,8 +94,13 @@ public class Booking {
         this.status = status;
         this.paymentStatus = paymentStatus;
         this.totalAmount = totalAmount;
+        this.seatTotal = seatTotal;
+        this.convenienceFee = convenienceFee;
+        this.gstAmount = gstAmount;
+        this.discountAmount = discountAmount;
         this.holdToken = holdToken;
         this.paymentReference = paymentReference;
+        this.cardType = cardType;
         this.createdAt = createdAt;
         if (seatNumbers != null) {
             this.seatNumbers = new ArrayList<>(seatNumbers);
@@ -140,6 +163,38 @@ public class Booking {
         this.totalAmount = totalAmount;
     }
 
+    public double getSeatTotal() {
+        return seatTotal;
+    }
+
+    public void setSeatTotal(double seatTotal) {
+        this.seatTotal = seatTotal;
+    }
+
+    public double getConvenienceFee() {
+        return convenienceFee;
+    }
+
+    public void setConvenienceFee(double convenienceFee) {
+        this.convenienceFee = convenienceFee;
+    }
+
+    public double getGstAmount() {
+        return gstAmount;
+    }
+
+    public void setGstAmount(double gstAmount) {
+        this.gstAmount = gstAmount;
+    }
+
+    public double getDiscountAmount() {
+        return discountAmount;
+    }
+
+    public void setDiscountAmount(double discountAmount) {
+        this.discountAmount = discountAmount;
+    }
+
     public String getHoldToken() {
         return holdToken;
     }
@@ -154,6 +209,14 @@ public class Booking {
 
     public void setPaymentReference(String paymentReference) {
         this.paymentReference = paymentReference;
+    }
+
+    public CardType getCardType() {
+        return cardType;
+    }
+
+    public void setCardType(CardType cardType) {
+        this.cardType = cardType;
     }
 
     public LocalDateTime getCreatedAt() {

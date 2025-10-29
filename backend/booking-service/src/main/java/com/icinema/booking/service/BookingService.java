@@ -13,6 +13,7 @@ import com.icinema.common.dto.BookingDto;
 import com.icinema.common.dto.PaymentDto;
 import com.icinema.common.dto.PaymentRequest;
 import com.icinema.common.model.BookingStatus;
+import com.icinema.common.model.CardType;
 import com.icinema.common.model.PaymentStatus;
 import jakarta.transaction.Transactional;
 import java.util.List;
@@ -53,9 +54,15 @@ public class BookingService {
         }
 
         SeatHoldResult holdResult = holdResponse.getData();
-        double totalAmount = holdResult.seats().stream()
+        double seatTotal = holdResult.seats().stream()
             .mapToDouble(seat -> seat.price())
             .sum();
+
+        double convenienceFee = Math.round(seatTotal * 0.05 * 100.0) / 100.0;
+        double gstAmount = Math.round((seatTotal + convenienceFee) * 0.18 * 100.0) / 100.0;
+        double discountRate = request.cardType() == CardType.CREDIT ? 0.10 : 0.05;
+        double discountAmount = Math.round((seatTotal + convenienceFee + gstAmount) * discountRate * 100.0) / 100.0;
+        double totalAmount = Math.max(0, Math.round((seatTotal + convenienceFee + gstAmount - discountAmount) * 100.0) / 100.0);
 
         Booking booking = new Booking();
         booking.setShowId(request.showId());
@@ -65,10 +72,25 @@ public class BookingService {
         booking.setStatus(BookingStatus.PENDING);
         booking.setPaymentStatus(PaymentStatus.INITIATED);
         booking.setTotalAmount(totalAmount);
+        booking.setSeatTotal(seatTotal);
+        booking.setConvenienceFee(convenienceFee);
+        booking.setGstAmount(gstAmount);
+        booking.setDiscountAmount(discountAmount);
         booking.setHoldToken(holdResult.holdToken());
+        booking.setCardType(request.cardType());
         booking = bookingRepository.save(booking);
 
-        PaymentDto paymentDto = processPayment(request, booking, totalAmount);
+        PaymentDto paymentDto;
+        try {
+            paymentDto = processPayment(request, booking, totalAmount);
+        } catch (Exception ex) {
+            log.error("Error while processing payment for booking {}: {}", booking.getId(), ex.getMessage());
+            seatingClient.releaseHold(new ConfirmHoldPayload(request.showId(), holdResult.holdToken()));
+            booking.setStatus(BookingStatus.FAILED);
+            booking.setPaymentStatus(PaymentStatus.FAILED);
+            bookingRepository.save(booking);
+            throw ex;
+        }
 
         if (paymentDto != null && paymentDto.status() == PaymentStatus.SUCCEEDED) {
             seatingClient.confirmHold(new ConfirmHoldPayload(request.showId(), holdResult.holdToken()));
@@ -103,20 +125,19 @@ public class BookingService {
     }
 
     private PaymentDto processPayment(BookingRequest request, Booking booking, double totalAmount) {
-        try {
-            PaymentRequest paymentRequest = new PaymentRequest(
-                booking.getId(),
-                totalAmount,
-                request.currency(),
-                request.customerEmail(),
-                request.cardToken()
-            );
-            ApiResponse<PaymentDto> paymentResponse = paymentClient.charge(paymentRequest);
-            if (paymentResponse != null && paymentResponse.isSuccess()) {
-                return paymentResponse.getData();
-            }
-        } catch (Exception ex) {
-            log.error("Error while processing payment for booking {}: {}", booking.getId(), ex.getMessage());
+        PaymentRequest paymentRequest = new PaymentRequest(
+            booking.getId(),
+            totalAmount,
+            request.currency(),
+            request.customerEmail(),
+            request.cardType(),
+            request.cardNumber(),
+            request.expiry(),
+            request.cvv()
+        );
+        ApiResponse<PaymentDto> paymentResponse = paymentClient.charge(paymentRequest);
+        if (paymentResponse != null && paymentResponse.isSuccess()) {
+            return paymentResponse.getData();
         }
         return null;
     }

@@ -24,7 +24,7 @@ export function MovieCard({ movie }: MovieCardProps) {
         <h3>{movie.title}</h3>
         <p className="synopsis">{movie.synopsis}</p>
         <div className="movie-footer">
-          <span className="rating">★ {movie.rating.toFixed(1)}</span>
+          <span className="rating">★ {movie.rating.toFixed(1)} ({movie.ratingCount})</span>
           <Link to={`/movies/${movie.id}`} className="primary">
             View Details
           </Link>

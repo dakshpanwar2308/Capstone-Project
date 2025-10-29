@@ -17,6 +17,8 @@ public class MovieMapper {
             movie.getLanguage(),
             movie.getDurationMinutes(),
             movie.getRating(),
+            movie.getCensorRating(),
+            movie.getRatingCount(),
             movie.getPosterUrl(),
             movie.getSynopsis(),
             movie.getReleaseDate()
@@ -34,6 +36,8 @@ public class MovieMapper {
         movie.setLanguage(dto.language());
         movie.setDurationMinutes(dto.durationMinutes());
         movie.setRating(dto.rating());
+        movie.setCensorRating(dto.censorRating());
+        movie.setRatingCount(dto.ratingCount());
         movie.setPosterUrl(dto.posterUrl());
         movie.setSynopsis(dto.synopsis());
         movie.setReleaseDate(dto.releaseDate());

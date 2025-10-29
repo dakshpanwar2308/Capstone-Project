@@ -32,3 +32,8 @@ export async function fetchHighlights() {
   const response = await api.get<ApiResponse<Movie[]>>('/api/movies/highlights');
   return response.data.data;
 }
+
+export async function submitMovieRating(movieId: number, rating: number) {
+  const response = await api.post<ApiResponse<Movie>>(`/api/movies/${movieId}/ratings`, { rating });
+  return response.data.data;
+}

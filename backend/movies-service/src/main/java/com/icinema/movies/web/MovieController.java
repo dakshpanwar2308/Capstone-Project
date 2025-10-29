@@ -3,6 +3,7 @@ package com.icinema.movies.web;
 import com.icinema.common.api.ApiResponse;
 import com.icinema.common.dto.MovieDto;
 import com.icinema.movies.service.MovieService;
+import com.icinema.movies.web.dto.RatingRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
@@ -59,6 +60,14 @@ public class MovieController {
     public ResponseEntity<ApiResponse<MovieDto>> create(@Valid @RequestBody MovieDto movieDto) {
         var saved = movieService.save(movieDto);
         return ResponseEntity.ok(ApiResponse.created(saved));
+    }
+
+    @PostMapping("/{id}/ratings")
+    public ResponseEntity<ApiResponse<MovieDto>> rateMovie(
+        @PathVariable Long id,
+        @Valid @RequestBody RatingRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(movieService.addRating(id, request.rating())));
     }
 
     @PutMapping("/{id}")

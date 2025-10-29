@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { fetchMovie } from '../api/movies'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { FormEvent } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { fetchMovie, submitMovieRating } from '../api/movies'
 import { fetchShowDetails, fetchShowsByMovie } from '../api/theatres'
 import type { Movie, Show, Theatre } from '../types'
 
@@ -11,13 +12,20 @@ interface EnrichedShow extends Show {
 const MovieDetailsPage = () => {
   const { movieId } = useParams<{ movieId: string }>()
   const navigate = useNavigate()
+  const showtimeRef = useRef<HTMLDivElement | null>(null)
+
   const [movie, setMovie] = useState<Movie | null>(null)
   const [shows, setShows] = useState<EnrichedShow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [ratingInput, setRatingInput] = useState(5)
+  const [ratingMessage, setRatingMessage] = useState<string | null>(null)
+  const [ratingError, setRatingError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!movieId) return
+    if (!movieId) {
+      return
+    }
 
     const loadDetails = async () => {
       try {
@@ -55,6 +63,26 @@ const MovieDetailsPage = () => {
     }, {})
   }, [shows])
 
+  const handleRateMovie = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!movieId) {
+      return
+    }
+    setRatingError(null)
+    setRatingMessage(null)
+    try {
+      const updatedMovie = await submitMovieRating(Number(movieId), ratingInput)
+      setMovie(updatedMovie)
+      setRatingMessage('Thanks for sharing your rating!')
+    } catch (err) {
+      setRatingError('We could not save your rating right now. Please try again later.')
+    }
+  }
+
+  const scrollToShowtimes = () => {
+    showtimeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   if (loading) {
     return <div className="content-card">Loading movie details...</div>
   }
@@ -83,14 +111,43 @@ const MovieDetailsPage = () => {
             <div className="hero-meta">
               <span>{movie.language}</span>
               <span>{movie.durationMinutes} min</span>
-              <span>Rating: {movie.rating.toFixed(1)}★</span>
+              <span>Rated {movie.censorRating}</span>
               <span>Release: {new Date(movie.releaseDate).toLocaleDateString()}</span>
+              <span>
+                Audience rating: {movie.rating.toFixed(1)}★ ({movie.ratingCount} reviews)
+              </span>
             </div>
+            <div className="hero-actions">
+              <button type="button" className="primary" onClick={scrollToShowtimes}>
+                Book My Show
+              </button>
+              <Link to="/" className="link-button">
+                ← Back to movies
+              </Link>
+            </div>
+            <form className="rating-form" onSubmit={handleRateMovie}>
+              <label htmlFor="userRating">Add your rating</label>
+              <div className="rating-inputs">
+                <input
+                  id="userRating"
+                  type="number"
+                  min={1}
+                  max={5}
+                  step={0.5}
+                  value={ratingInput}
+                  onChange={(event) => setRatingInput(Number(event.target.value))}
+                  required
+                />
+                <button type="submit">Submit</button>
+              </div>
+              {ratingMessage && <p className="success-text">{ratingMessage}</p>}
+              {ratingError && <p className="error-text">{ratingError}</p>}
+            </form>
           </div>
         </div>
       </section>
 
-      <section className="content-card">
+      <section className="content-card" ref={showtimeRef} id="showtimes">
         <h2 className="section-title">Available showtimes</h2>
         {shows.length === 0 ? (
           <p className="empty-state">No showtimes available right now.</p>

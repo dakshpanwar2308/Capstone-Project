@@ -1,110 +1,175 @@
-import { useState } from 'react'
-import type { FormEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 export interface MovieFilterState {
   query: string
   genre: string
   language: string
-  rating: number
+  rating: number | null
+}
+
+export interface FilterCounts {
+  genres: Record<string, number>
+  languages: Record<string, number>
+  ratings: Record<number, number>
+  genresAll: number
+  languagesAll: number
+  ratingsAll: number
 }
 
 interface MovieFiltersProps {
-  availableGenres: string[]
-  availableLanguages: string[]
-  onFilterChange: (filters: MovieFilterState) => void
-  initialState?: MovieFilterState
+  genres: string[]
+  languages: string[]
+  counts: FilterCounts
+  onChange: (filters: MovieFilterState) => void
+  value?: MovieFilterState
 }
 
 const defaultState: MovieFilterState = {
   query: '',
   genre: 'all',
   language: 'all',
-  rating: 0,
+  rating: null,
 }
 
 export function MovieFilters({
-  availableGenres,
-  availableLanguages,
-  onFilterChange,
-  initialState,
+  genres,
+  languages,
+  counts,
+  onChange,
+  value,
 }: MovieFiltersProps) {
-  const [filters, setFilters] = useState<MovieFilterState>(initialState ?? defaultState)
+  const [filters, setFilters] = useState<MovieFilterState>(value ?? defaultState)
+  const [expanded, setExpanded] = useState<{ rating: boolean; genre: boolean; language: boolean }>({
+    rating: true,
+    genre: true,
+    language: true,
+  })
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault()
-    onFilterChange(filters)
+  const ratingOptions = useMemo(
+    () => [
+      { label: '4+ stars', value: 4 },
+      { label: '3+ stars', value: 3 },
+      { label: '2+ stars', value: 2 },
+      { label: '1+ stars', value: 1 },
+    ],
+    [],
+  )
+
+  const updateFilters = (patch: Partial<MovieFilterState>) => {
+    const next = { ...filters, ...patch }
+    setFilters(next)
+    onChange(next)
   }
 
   const handleReset = () => {
     setFilters(defaultState)
-    onFilterChange(defaultState)
+    onChange(defaultState)
   }
 
+  useEffect(() => {
+    if (value) {
+      setFilters(value)
+    }
+  }, [value])
+
   return (
-    <form className="filters-card content-card" onSubmit={handleSubmit}>
-      <div className="filters-grid">
-        <div className="filter-group">
-          <label htmlFor="query">Search</label>
-          <input
-            id="query"
-            type="text"
-            value={filters.query}
-            onChange={(e) => setFilters({ ...filters, query: e.target.value })}
-            placeholder="Search by movie title"
-          />
-        </div>
-        <div className="filter-group">
-          <label htmlFor="genre">Genre</label>
-          <select
-            id="genre"
-            value={filters.genre}
-            onChange={(e) => setFilters({ ...filters, genre: e.target.value })}
-          >
-            <option value="all">All</option>
-            {availableGenres.map((genre) => (
-              <option key={genre} value={genre}>
-                {genre}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="filter-group">
-          <label htmlFor="language">Language</label>
-          <select
-            id="language"
-            value={filters.language}
-            onChange={(e) => setFilters({ ...filters, language: e.target.value })}
-          >
-            <option value="all">All</option>
-            {availableLanguages.map((language) => (
-              <option key={language} value={language}>
-                {language}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="filter-group">
-          <label htmlFor="rating">Minimum Rating</label>
-          <input
-            id="rating"
-            type="range"
-            min={0}
-            max={5}
-            step={0.5}
-            value={filters.rating}
-            onChange={(e) => setFilters({ ...filters, rating: Number(e.target.value) })}
-          />
-          <span className="slider-value">{filters.rating.toFixed(1)}★</span>
-        </div>
+    <aside className="filters-card content-card">
+      <div className="filter-group search">
+        <label htmlFor="query">Search</label>
+        <input
+          id="query"
+          type="text"
+          value={filters.query}
+          onChange={(e) => updateFilters({ query: e.target.value })}
+          placeholder="Search by title"
+        />
       </div>
+
+      <div className="filter-accordion">
+        <details open={expanded.rating} onToggle={(event) => setExpanded((prev) => ({ ...prev, rating: (event.target as HTMLDetailsElement).open }))}>
+          <summary>Rating</summary>
+          <ul>
+            <li>
+              <button
+                type="button"
+                className={!filters.rating ? 'active' : ''}
+                onClick={() => updateFilters({ rating: null })}
+              >
+                All <span className="count">({counts.ratingsAll})</span>
+              </button>
+            </li>
+            {ratingOptions.map((option) => (
+              <li key={option.value}>
+                <button
+                  type="button"
+                  className={filters.rating === option.value ? 'active' : ''}
+                  onClick={() => updateFilters({ rating: option.value })}
+                >
+                  {option.label} <span className="count">({counts.ratings[option.value] ?? 0})</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
+
+        <details open={expanded.genre} onToggle={(event) => setExpanded((prev) => ({ ...prev, genre: (event.target as HTMLDetailsElement).open }))}>
+          <summary>Genre</summary>
+          <ul>
+            <li>
+              <button
+                type="button"
+                className={filters.genre === 'all' ? 'active' : ''}
+                onClick={() => updateFilters({ genre: 'all' })}
+              >
+                All <span className="count">({counts.genresAll})</span>
+              </button>
+            </li>
+            {genres.map((genre) => (
+              <li key={genre}>
+                <button
+                  type="button"
+                  className={filters.genre === genre ? 'active' : ''}
+                  onClick={() => updateFilters({ genre })}
+                >
+                  {genre} <span className="count">({counts.genres[genre] ?? 0})</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
+
+        <details open={expanded.language} onToggle={(event) => setExpanded((prev) => ({ ...prev, language: (event.target as HTMLDetailsElement).open }))}>
+          <summary>Language</summary>
+          <ul>
+            <li>
+              <button
+                type="button"
+                className={filters.language === 'all' ? 'active' : ''}
+                onClick={() => updateFilters({ language: 'all' })}
+              >
+                All <span className="count">({counts.languagesAll})</span>
+              </button>
+            </li>
+            {languages.map((language) => (
+              <li key={language}>
+                <button
+                  type="button"
+                  className={filters.language === language ? 'active' : ''}
+                  onClick={() => updateFilters({ language })}
+                >
+                  {language} <span className="count">({counts.languages[language] ?? 0})</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      </div>
+
       <div className="filter-actions">
-        <button type="submit" className="primary">
-          Apply
-        </button>
         <button type="button" onClick={handleReset}>
-          Reset
+          Reset filters
         </button>
       </div>
-    </form>
+    </aside>
   )
 }

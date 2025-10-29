@@ -1,31 +1,49 @@
 import { useEffect, useMemo, useState } from 'react'
-import { fetchHighlights, fetchMovies, searchMovies } from '../api/movies'
+import { fetchHighlights, fetchMovies } from '../api/movies'
 import type { Movie } from '../types'
 import { MovieGrid } from '../components/MovieGrid'
 import { MovieFilters } from '../components/MovieFilters'
-import type { MovieFilterState } from '../components/MovieFilters'
+import type { FilterCounts, MovieFilterState } from '../components/MovieFilters'
 
-const defaultFilters: MovieFilterState = {
+const initialFilters: MovieFilterState = {
   query: '',
   genre: 'all',
   language: 'all',
-  rating: 0,
+  rating: null,
+}
+
+const ratingThresholds = [4, 3, 2, 1]
+
+const applyFilters = (list: Movie[], filters: MovieFilterState): Movie[] => {
+  const loweredQuery = filters.query.trim().toLowerCase()
+  return list.filter((movie) => {
+    const matchesQuery =
+      !loweredQuery ||
+      movie.title.toLowerCase().includes(loweredQuery) ||
+      movie.synopsis?.toLowerCase().includes(loweredQuery)
+
+    const matchesGenre = filters.genre === 'all' || movie.genre === filters.genre
+    const matchesLanguage = filters.language === 'all' || movie.language === filters.language
+    const matchesRating = !filters.rating || movie.rating >= filters.rating
+
+    return matchesQuery && matchesGenre && matchesLanguage && matchesRating
+  })
 }
 
 const HomePage = () => {
   const [movies, setMovies] = useState<Movie[]>([])
-  const [displayedMovies, setDisplayedMovies] = useState<Movie[]>([])
   const [highlights, setHighlights] = useState<Movie[]>([])
+  const [filters, setFilters] = useState<MovieFilterState>(initialFilters)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const loadMovies = async () => {
+    const load = async () => {
       try {
         setLoading(true)
-        const [movieList, topPicks] = await Promise.all([fetchMovies(), fetchHighlights()])
-        setMovies(movieList)
-        setDisplayedMovies(movieList)
+        setError(null)
+        const [allMovies, topPicks] = await Promise.all([fetchMovies(), fetchHighlights()])
+        setMovies(allMovies)
         setHighlights(topPicks)
       } catch (err) {
         setError('Unable to load movies right now. Please try again later.')
@@ -33,7 +51,8 @@ const HomePage = () => {
         setLoading(false)
       }
     }
-    loadMovies()
+
+    load()
   }, [])
 
   const genres = useMemo(() => Array.from(new Set(movies.map((movie) => movie.genre))).sort(), [movies])
@@ -42,44 +61,48 @@ const HomePage = () => {
     [movies],
   )
 
-  const handleFilters = async (filters: MovieFilterState) => {
-    try {
-      setLoading(true)
-      setError(null)
-      const params = {
-        genre: filters.genre === 'all' ? undefined : filters.genre,
-        language: filters.language === 'all' ? undefined : filters.language,
-        rating: filters.rating > 0 ? filters.rating : undefined,
-      }
+  const filteredMovies = useMemo(() => applyFilters(movies, filters), [movies, filters])
 
-      if (filters.query.trim()) {
-        const results = await searchMovies({
-          query: filters.query,
-          genre: params.genre,
-          language: params.language,
-          rating: params.rating,
-        })
-        setDisplayedMovies(results)
-      } else {
-        const filtered = await fetchMovies(params)
-        setDisplayedMovies(filtered)
-      }
-    } catch (err) {
-      setError('Something went wrong while filtering movies.')
-    } finally {
-      setLoading(false)
+  const filterCounts: FilterCounts = useMemo(() => {
+    const genreCounts = genres.reduce<Record<string, number>>((acc, genre) => {
+      acc[genre] = applyFilters(movies, { ...filters, genre }).length
+      return acc
+    }, {})
+
+    const languageCounts = languages.reduce<Record<string, number>>((acc, language) => {
+      acc[language] = applyFilters(movies, { ...filters, language }).length
+      return acc
+    }, {})
+
+    const ratingCounts = ratingThresholds.reduce<Record<number, number>>((acc, threshold) => {
+      acc[threshold] = applyFilters(movies, { ...filters, rating: threshold }).length
+      return acc
+    }, {})
+
+    return {
+      genres: genreCounts,
+      languages: languageCounts,
+      ratings: ratingCounts,
+      genresAll: applyFilters(movies, { ...filters, genre: 'all' }).length,
+      languagesAll: applyFilters(movies, { ...filters, language: 'all' }).length,
+      ratingsAll: applyFilters(movies, { ...filters, rating: null }).length,
     }
+  }, [movies, filters, genres, languages])
+
+  const handleFilterChange = (next: MovieFilterState) => {
+    setFilters(next)
   }
 
   return (
     <div className="home-page">
-      <section>
+      <section className="filters-wrapper">
         <h2 className="section-title">Find your next movie</h2>
         <MovieFilters
-          availableGenres={genres}
-          availableLanguages={languages}
-          initialState={defaultFilters}
-          onFilterChange={handleFilters}
+          genres={genres}
+          languages={languages}
+          counts={filterCounts}
+          onChange={handleFilterChange}
+          value={filters}
         />
       </section>
 
@@ -88,8 +111,12 @@ const HomePage = () => {
       {loading ? (
         <div className="content-card">Loading movies...</div>
       ) : (
-        <section>
-          <MovieGrid movies={displayedMovies} />
+        <section aria-live="polite">
+          {filteredMovies.length === 0 ? (
+            <div className="content-card empty-state">No movies match your selection right now.</div>
+          ) : (
+            <MovieGrid movies={filteredMovies} />
+          )}
         </section>
       )}
 

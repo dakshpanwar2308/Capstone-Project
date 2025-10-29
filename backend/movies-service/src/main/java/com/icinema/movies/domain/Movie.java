@@ -30,6 +30,12 @@ public class Movie {
     @Column(nullable = false)
     private double rating;
 
+    @Column(name = "censor_rating", nullable = false)
+    private String censorRating;
+
+    @Column(name = "rating_count", nullable = false)
+    private long ratingCount;
+
     @Column(name = "poster_url")
     private String posterUrl;
 
@@ -43,13 +49,15 @@ public class Movie {
     }
 
     public Movie(Long id, String title, String genre, String language, int durationMinutes, double rating,
-                 String posterUrl, String synopsis, LocalDate releaseDate) {
+                 String censorRating, long ratingCount, String posterUrl, String synopsis, LocalDate releaseDate) {
         this.id = id;
         this.title = title;
         this.genre = genre;
         this.language = language;
         this.durationMinutes = durationMinutes;
         this.rating = rating;
+        this.censorRating = censorRating;
+        this.ratingCount = ratingCount;
         this.posterUrl = posterUrl;
         this.synopsis = synopsis;
         this.releaseDate = releaseDate;
@@ -101,6 +109,22 @@ public class Movie {
 
     public void setRating(double rating) {
         this.rating = rating;
+    }
+
+    public String getCensorRating() {
+        return censorRating;
+    }
+
+    public void setCensorRating(String censorRating) {
+        this.censorRating = censorRating;
+    }
+
+    public long getRatingCount() {
+        return ratingCount;
+    }
+
+    public void setRatingCount(long ratingCount) {
+        this.ratingCount = ratingCount;
     }
 
     public String getPosterUrl() {

@@ -2,15 +2,21 @@ package com.icinema.payment.service;
 
 import com.icinema.common.dto.PaymentDto;
 import com.icinema.common.dto.PaymentRequest;
+import com.icinema.common.model.CardType;
 import com.icinema.common.model.PaymentStatus;
 import com.icinema.payment.domain.Payment;
 import com.icinema.payment.repository.PaymentRepository;
 import jakarta.transaction.Transactional;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 @Service
 public class PaymentProcessor {
+
+    private static final DateTimeFormatter EXPIRY_FORMAT = DateTimeFormatter.ofPattern("MM/yy");
 
     private final PaymentRepository paymentRepository;
 
@@ -20,7 +26,8 @@ public class PaymentProcessor {
 
     @Transactional
     public PaymentDto charge(PaymentRequest request) {
-        PaymentStatus status = simulateStatus(request.cardToken());
+        validateCardDetails(request);
+        PaymentStatus status = simulateStatus(request.cardType(), request.cardNumber());
         Payment payment = new Payment();
         payment.setBookingId(request.bookingId());
         payment.setAmount(request.amount());
@@ -42,11 +49,34 @@ public class PaymentProcessor {
         return toDto(saved);
     }
 
-    private PaymentStatus simulateStatus(String cardToken) {
-        if (cardToken == null || cardToken.isBlank()) {
+    private void validateCardDetails(PaymentRequest request) {
+        if (request.cardNumber() == null || !request.cardNumber().matches("\\d{16}")) {
+            throw new IllegalArgumentException("Card number must be 16 digits.");
+        }
+        if (request.cvv() == null || !request.cvv().matches("\\d{3}")) {
+            throw new IllegalArgumentException("CVV must be 3 digits.");
+        }
+        try {
+            YearMonth expiry = YearMonth.parse(request.expiry(), EXPIRY_FORMAT);
+            if (expiry.isBefore(YearMonth.now())) {
+                throw new IllegalArgumentException("Card has expired.");
+            }
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException("Invalid expiry format. Use MM/YY.");
+        }
+    }
+
+    private PaymentStatus simulateStatus(CardType cardType, String cardNumber) {
+        if (cardNumber == null || cardNumber.isBlank()) {
             return PaymentStatus.FAILED;
         }
-        return cardToken.startsWith("fail") ? PaymentStatus.FAILED : PaymentStatus.SUCCEEDED;
+        if (cardType == CardType.CREDIT && cardNumber.endsWith("0")) {
+            return PaymentStatus.FAILED;
+        }
+        if (cardType == CardType.DEBIT && cardNumber.endsWith("9")) {
+            return PaymentStatus.FAILED;
+        }
+        return PaymentStatus.SUCCEEDED;
     }
 
     private PaymentDto toDto(Payment payment) {

@@ -23,8 +23,13 @@ public class BookingMapper {
             booking.getCustomerEmail(),
             booking.getCreatedAt(),
             booking.getTotalAmount(),
+            booking.getSeatTotal(),
+            booking.getConvenienceFee(),
+            booking.getGstAmount(),
+            booking.getDiscountAmount(),
             booking.getStatus(),
             seats,
+            booking.getCardType(),
             payment
         );
     }

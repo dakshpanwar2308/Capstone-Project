@@ -11,6 +11,8 @@ export interface Movie {
   language: string;
   durationMinutes: number;
   rating: number;
+  censorRating: string;
+  ratingCount: number;
   posterUrl?: string;
   synopsis?: string;
   releaseDate: string;
@@ -55,7 +57,10 @@ export interface BookingPayload {
   customerName: string;
   customerEmail: string;
   currency: string;
-  cardToken: string;
+  cardType: 'CREDIT' | 'DEBIT';
+  cardNumber: string;
+  expiry: string;
+  cvv: string;
 }
 
 export interface Booking {
@@ -64,9 +69,14 @@ export interface Booking {
   customerName: string;
   customerEmail: string;
   totalAmount: number;
+  seatTotal: number;
+  convenienceFee: number;
+  gstAmount: number;
+  discountAmount: number;
   status: string;
   seatNumbers: string[];
   createdAt: string;
+  cardType: 'CREDIT' | 'DEBIT' | null;
 }
 
 export interface Payment {

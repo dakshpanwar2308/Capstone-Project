@@ -28,16 +28,17 @@ public class MovieService {
     }
 
     public List<MovieDto> fetchMovies(String genre, String language, Double rating) {
-        Specification<Movie> spec = Specification.where(null);
-        if (genre != null) {
-            spec = spec.and(MovieSpecifications.genreEquals(genre));
+        Specification<Movie> spec = null;
+        String normalizedGenre = normalizeEnumFilter(genre);
+        String normalizedLanguage = normalizeEnumFilter(language);
+        Double normalizedRating = normalizeRatingFilter(rating);
+
+        spec = and(spec, MovieSpecifications.genreEquals(normalizedGenre));
+        spec = and(spec, MovieSpecifications.languageEquals(normalizedLanguage));
+        if (normalizedRating != null) {
+            spec = and(spec, MovieSpecifications.minRating(normalizedRating));
         }
-        if (language != null) {
-            spec = spec.and(MovieSpecifications.languageEquals(language));
-        }
-        if (rating != null) {
-            spec = spec.and(MovieSpecifications.minRating(rating));
-        }
+
         return movieRepository.findAll(spec).stream()
             .map(movieMapper::toDto)
             .collect(Collectors.toList());
@@ -50,16 +51,20 @@ public class MovieService {
     }
 
     public List<MovieDto> search(String query, String genre, String language, Double rating) {
-        Specification<Movie> spec = MovieSpecifications.titleContains(query);
-        if (genre != null) {
-            spec = spec.and(MovieSpecifications.genreEquals(genre));
+        Specification<Movie> spec = null;
+        String normalizedGenre = normalizeEnumFilter(genre);
+        String normalizedLanguage = normalizeEnumFilter(language);
+        Double normalizedRating = normalizeRatingFilter(rating);
+
+        if (query != null && !query.isBlank()) {
+            spec = and(spec, MovieSpecifications.titleContains(query));
         }
-        if (language != null) {
-            spec = spec.and(MovieSpecifications.languageEquals(language));
+        spec = and(spec, MovieSpecifications.genreEquals(normalizedGenre));
+        spec = and(spec, MovieSpecifications.languageEquals(normalizedLanguage));
+        if (normalizedRating != null) {
+            spec = and(spec, MovieSpecifications.minRating(normalizedRating));
         }
-        if (rating != null) {
-            spec = spec.and(MovieSpecifications.minRating(rating));
-        }
+
         return movieRepository.findAll(spec).stream()
             .map(movieMapper::toDto)
             .collect(Collectors.toList());
@@ -80,6 +85,8 @@ public class MovieService {
         existing.setLanguage(dto.language());
         existing.setDurationMinutes(dto.durationMinutes());
         existing.setRating(dto.rating());
+        existing.setCensorRating(dto.censorRating());
+        existing.setRatingCount(dto.ratingCount());
         existing.setPosterUrl(dto.posterUrl());
         existing.setSynopsis(dto.synopsis());
         existing.setReleaseDate(dto.releaseDate());
@@ -87,7 +94,50 @@ public class MovieService {
     }
 
     @Transactional
+    public MovieDto addRating(Long id, double rating) {
+        if (rating < 1 || rating > 5) {
+            throw new IllegalArgumentException("Rating must be between 1 and 5 stars.");
+        }
+        Movie movie = movieRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Movie not found: " + id));
+
+        long currentCount = movie.getRatingCount();
+        double totalScore = movie.getRating() * currentCount;
+        long updatedCount = currentCount + 1;
+        double newAverage = (totalScore + rating) / updatedCount;
+
+        movie.setRating(Math.round(newAverage * 10.0) / 10.0);
+        movie.setRatingCount(updatedCount);
+        return movieMapper.toDto(movie);
+    }
+
+    @Transactional
     public void delete(Long id) {
         movieRepository.deleteById(id);
+    }
+
+    private Specification<Movie> and(Specification<Movie> base, Specification<Movie> addition) {
+        if (addition == null) {
+            return base;
+        }
+        return base == null ? addition : base.and(addition);
+    }
+
+    private String normalizeEnumFilter(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty() || "all".equalsIgnoreCase(trimmed)) {
+            return null;
+        }
+        return trimmed;
+    }
+
+    private Double normalizeRatingFilter(Double value) {
+        if (value == null || value <= 0) {
+            return null;
+        }
+        return value;
     }
 }
