@@ -1,0 +1,151 @@
+version: "3.9"
+
+services:
+  consul:
+    image: hashicorp/consul:1.16
+    command: ["agent", "-server", "-bootstrap", "-ui", "-client=0.0.0.0"]
+    ports:
+      - "8500:8500"
+    networks:
+      - icinema-net
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./ops/mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - icinema-net
+
+  movies-service:
+    build: ./backend/movies-service
+    depends_on:
+      - mysql
+      - consul
+    environment:
+      SPRING_PROFILES_ACTIVE: mysql
+      MYSQL_HOST: mysql
+      MYSQL_USER: root
+      MYSQL_PASSWORD: rootpassword
+      MYSQL_PORT: 3306
+      CONSUL_HOST: consul
+      CONSUL_PORT: 8500
+      API_KEY: cinema-dev-key
+    ports:
+      - "8081:8081"
+    networks:
+      - icinema-net
+
+  theatre-service:
+    build: ./backend/theatre-service
+    depends_on:
+      - mysql
+      - consul
+    environment:
+      SPRING_PROFILES_ACTIVE: mysql
+      MYSQL_HOST: mysql
+      MYSQL_USER: root
+      MYSQL_PASSWORD: rootpassword
+      MYSQL_PORT: 3306
+      MOVIES_HOST: movies-service
+      MOVIES_PORT: 8081
+      CONSUL_HOST: consul
+      CONSUL_PORT: 8500
+      API_KEY: cinema-dev-key
+    ports:
+      - "8082:8082"
+    networks:
+      - icinema-net
+
+  seating-service:
+    build: ./backend/seating-service
+    depends_on:
+      - mysql
+      - consul
+    environment:
+      SPRING_PROFILES_ACTIVE: mysql
+      MYSQL_HOST: mysql
+      MYSQL_USER: root
+      MYSQL_PASSWORD: rootpassword
+      MYSQL_PORT: 3306
+      CONSUL_HOST: consul
+      CONSUL_PORT: 8500
+      API_KEY: cinema-dev-key
+    ports:
+      - "8083:8083"
+    networks:
+      - icinema-net
+
+  booking-service:
+    build: ./backend/booking-service
+    depends_on:
+      - mysql
+      - consul
+      - seating-service
+      - payment-service
+    environment:
+      SPRING_PROFILES_ACTIVE: mysql
+      MYSQL_HOST: mysql
+      MYSQL_USER: root
+      MYSQL_PASSWORD: rootpassword
+      MYSQL_PORT: 3306
+      SEATING_HOST: seating-service
+      SEATING_PORT: 8083
+      PAYMENT_HOST: payment-service
+      PAYMENT_PORT: 8085
+      CONSUL_HOST: consul
+      CONSUL_PORT: 8500
+      API_KEY: cinema-dev-key
+    ports:
+      - "8084:8084"
+    networks:
+      - icinema-net
+
+  payment-service:
+    build: ./backend/payment-service
+    depends_on:
+      - mysql
+      - consul
+    environment:
+      SPRING_PROFILES_ACTIVE: mysql
+      MYSQL_HOST: mysql
+      MYSQL_USER: root
+      MYSQL_PASSWORD: rootpassword
+      MYSQL_PORT: 3306
+      CONSUL_HOST: consul
+      CONSUL_PORT: 8500
+      API_KEY: cinema-dev-key
+    ports:
+      - "8085:8085"
+    networks:
+      - icinema-net
+
+  gateway-service:
+    build: ./backend/gateway-service
+    depends_on:
+      - movies-service
+      - theatre-service
+      - seating-service
+      - booking-service
+      - payment-service
+      - consul
+    environment:
+      SPRING_PROFILES_ACTIVE: mysql
+      CONSUL_HOST: consul
+      CONSUL_PORT: 8500
+      API_KEY: cinema-dev-key
+    ports:
+      - "8080:8080"
+    networks:
+      - icinema-net
+
+networks:
+  icinema-net:
+    driver: bridge
+
+volumes:
+  mysql_data:

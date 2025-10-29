@@ -1,0 +1,15 @@
+INSERT INTO movies (title, genre, language, duration_minutes, rating, poster_url, synopsis, release_date) VALUES
+    ('The Galactic Voyage', 'Sci-Fi', 'English', 132, 4.6, 'https://example.com/posters/galactic-voyage.jpg',
+     'A crew of explorers chart a new course through uncharted galaxies to save their home world.', '2024-04-04'),
+    ('Mystery Manor', 'Mystery', 'English', 118, 4.2, 'https://example.com/posters/mystery-manor.jpg',
+     'An investigator unravels the secrets of an old manor where nothing is as it seems.', '2024-02-22'),
+    ('Saffron Dreams', 'Drama', 'Hindi', 142, 4.4, 'https://example.com/posters/saffron-dreams.jpg',
+     'Two chefs compete in a culinary contest that tests their friendship and their resolve.', '2023-12-15'),
+    ('Echoes of Time', 'Thriller', 'English', 125, 4.0, 'https://example.com/posters/echoes-time.jpg',
+     'A detective relives the same day to stop a city-wide catastrophe.', '2024-03-10'),
+    ('Aurora Nights', 'Romance', 'English', 110, 4.1, 'https://example.com/posters/aurora-nights.jpg',
+     'Two travelers find love under the northern lights.', '2023-11-09'),
+    ('Legends of the Savannah', 'Adventure', 'Swahili', 135, 4.5, 'https://example.com/posters/savannah.jpg',
+     'A young explorer sets off across the savannah to find a mythical tribe.', '2024-01-05'),
+    ('Rhythm Street', 'Musical', 'English', 100, 3.9, 'https://example.com/posters/rhythm-street.jpg',
+     'An aspiring musician starts a rooftop concert series that brings a city together.', '2024-02-01');

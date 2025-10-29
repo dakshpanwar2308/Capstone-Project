@@ -1,0 +1,12 @@
+target/
+**/target/
+.idea/
+.vscode/
+*.iml
+.DS_Store
+node_modules/
+dist/
+/.env
+**/.env
+.mvn/
+frontend/node_modules/
